@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import Chat from './Chat'
 import { api, formatTime, isInProgress, timestampUrl, type Chunk, type Video } from './api'
 
 const POLL_MS = 2000
@@ -128,6 +129,7 @@ function StatusBadge({ video }: { video: Video }) {
 function VideoDetail({ video }: { video: Video }) {
   const [chunks, setChunks] = useState<Chunk[] | null>(null)
   const [chunkError, setChunkError] = useState<string | null>(null)
+  const [tab, setTab] = useState<'chat' | 'chunks'>('chat')
 
   useEffect(() => {
     if (video.status !== 'ready') return
@@ -193,8 +195,25 @@ function VideoDetail({ video }: { video: Video }) {
       )}
 
       {video.status === 'ready' && (
+        <div className="tabs">
+          <button className={tab === 'chat' ? 'tab active' : 'tab'} onClick={() => setTab('chat')}>
+            Chat
+          </button>
+          <button className={tab === 'chunks' ? 'tab active' : 'tab'} onClick={() => setTab('chunks')}>
+            Chunks {chunks && <span className="muted">({chunks.length})</span>}
+          </button>
+        </div>
+      )}
+
+      {/* Chat stays mounted while on the Chunks tab so the conversation isn't lost. */}
+      {video.status === 'ready' && (
+        <div hidden={tab !== 'chat'}>
+          <Chat video={video} />
+        </div>
+      )}
+
+      {video.status === 'ready' && tab === 'chunks' && (
         <>
-          <h3>Chunks {chunks && <span className="muted">({chunks.length})</span>}</h3>
           {chunkError && <p className="error">{chunkError}</p>}
           {!chunks && !chunkError && <p className="muted">Loading…</p>}
           <ol className="chunks">

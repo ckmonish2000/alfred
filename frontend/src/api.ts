@@ -64,3 +64,56 @@ export function formatTime(totalSec: number): string {
 
 export const timestampUrl = (youtubeId: string, sec: number) =>
   `https://www.youtube.com/watch?v=${youtubeId}&t=${Math.floor(sec)}s`
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface ChatSource extends Chunk {
+  score: number
+}
+
+export type ChatEvent =
+  | { type: 'sources'; sources: ChatSource[] }
+  | { type: 'token'; text: string }
+  | { type: 'done' }
+  | { type: 'error'; message: string }
+
+/** POST a question and yield the NDJSON events the backend streams back. */
+export async function* streamChat(
+  videoId: string,
+  message: string,
+  history: ChatMessage[],
+  signal?: AbortSignal,
+): AsyncGenerator<ChatEvent> {
+  const res = await fetch(`${BASE}/videos/${videoId}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history }),
+    signal,
+  })
+  if (!res.ok || !res.body) {
+    const body = await res.json().catch(() => null)
+    throw new Error(typeof body?.detail === 'string' ? body.detail : `${res.status} ${res.statusText}`)
+  }
+
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buffer = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += value
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (line.trim()) yield JSON.parse(line) as ChatEvent
+    }
+  }
+  if (buffer.trim()) yield JSON.parse(buffer) as ChatEvent
+}
+
+/** Parse "1:23" or "1:02:03" into seconds. */
+export function parseTime(ts: string): number {
+  return ts.split(':').reduce((acc, part) => acc * 60 + Number(part), 0)
+}
