@@ -23,7 +23,7 @@ export interface Chunk {
   text: string
 }
 
-const BASE = '/api/video-chat'
+const BASE = '/api/agents/athena'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(BASE + path, {
@@ -87,10 +87,11 @@ export async function* streamChat(
   history: ChatMessage[],
   signal?: AbortSignal,
 ): AsyncGenerator<ChatEvent> {
-  const res = await fetch(`${BASE}/videos/${videoId}/chat`, {
+  // Chat runs through the generic runtime endpoint, like every flow.
+  const res = await fetch(`${BASE}/flows/chat/runs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ video_id: videoId, message, history }),
     signal,
   })
   if (!res.ok || !res.body) {

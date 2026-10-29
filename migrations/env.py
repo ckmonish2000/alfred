@@ -7,7 +7,7 @@ from alembic import context
 
 from app.core.config import settings
 from app.core.db import Base
-import app.features.video_chat.models  # noqa: F401  (register tables)
+from app.runtime.registry import import_models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -22,6 +22,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+import_models()  # register every agent's tables
 target_metadata = Base.metadata
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
